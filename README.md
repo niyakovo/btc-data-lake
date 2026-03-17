@@ -22,7 +22,7 @@ A microservice for automated data ingestion, storage, and real-time broadcasting
 
 **1. Clone the repository:**
 ```bash
-git clone [https://github.com/YOUR_USERNAME/btc-data-lake.git](https://github.com/niyakovo/btc-data-lake.git)
+git clone https://github.com/niyakovo/btc-data-lake.git
 cd btc-data-lake
 ```
 
