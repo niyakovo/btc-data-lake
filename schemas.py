@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import List
 
 
 class BTCPriceResponse(BaseModel):
@@ -9,3 +10,6 @@ class BTCPriceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+    
+class FileSelection(BaseModel):
+    files:List[str]

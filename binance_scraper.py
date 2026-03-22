@@ -26,7 +26,7 @@ def fetch_binance_price():
         except Exception as e:
             print(f"Connection error with Binance: {e}")
 
-        time.sleep(10)
+        time.sleep(3)
 
 if __name__ == "__main__":
     fetch_binance_price()

@@ -2,11 +2,12 @@ import csv
 import time
 import json
 import asyncio
+import models
+import os
 from datetime import datetime
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from database import SessionLocal
-import models
 from websocket_manager import websocket_manager
 
 
@@ -27,17 +28,8 @@ def process_csv_file(file_path: str, loop):
                         new_record = models.DBBTCPrice(timestamp=ts, price=price_val)
                         db.add(new_record)
 
-                        msg = json.dumps({"timestamp": str(ts), "price": price_val})
-                        future = asyncio.run_coroutine_threadsafe(websocket_manager.broadcast(msg), loop)
-                        try:
-                            future.result(timeout=2)
-                            print("Msg succesfuly sended to WebSockets")
-                        except Exception as e:
-                            print(f"Error while trying send msg to WS: {e}")
-
-                        
                 except Exception as e:
-                    print(f"Error in a row {row}: {e}")
+                    print(f"Error in a row {row}: {e}")           
             
             db.commit()
             print(f"File {file_path} added to DB")
@@ -53,8 +45,17 @@ class CSVHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         if not event.is_directory and event.src_path.endswith('.csv'):
-            print(f"New file found: {event.src_path}")
-            time.sleep(0.5) 
+            time.sleep(0.5)
+            
+            filename = os.path.basename(event.src_path)
+            print(f"New file: {filename}")
+            
+            msg = json.dumps({
+                "type": "new_file", 
+                "filename": filename
+            })
+            
+            asyncio.run_coroutine_threadsafe(websocket_manager.broadcast(msg), self.loop)
             process_csv_file(event.src_path, self.loop)
 
 

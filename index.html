@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Lake Explorer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #121212; color: #ffffff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #f3ba2f; margin-bottom: 30px; }
+        
+        .layout {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+            height: 80vh;
+        }
+
+        .explorer {
+            flex: 1;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        
+        .file-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid #333;
+            cursor: pointer;
+        }
+        .file-item:hover { background-color: #333; }
+        .file-item input { margin-right: 10px; transform: scale(1.2); }
+
+        button {
+            background-color: #f3ba2f;
+            color: #121212;
+            border: none;
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover { background-color: #e0a800; }
+
+        .chart-section {
+            flex: 3;
+            background-color: #1e1e1e;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chart-container { flex-grow: 1; position: relative; }
+    </style>
+</head>
+<body>
+
+    <h1>📁 Data Lake Analyzer</h1>
+
+    <div class="layout">
+        <div class="explorer">
+            <h3 style="margin-top: 0; color: #888;">Select files:</h3>
+            <div class="file-list" id="fileList">
+                <div style="padding: 10px; color: #666;">Loading file list...</div>
+            </div>
+            <button onclick="drawSelectedFiles()">📈 Plot Graph</button>
+        </div>
+
+        <div class="chart-section">
+            <h3 style="margin-top: 0; color: #888;" id="chartTitle">Graph not plotted</h3>
+            <div class="chart-container">
+                <canvas id="btcChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Chart.js instance
+        const ctx = document.getElementById('btcChart').getContext('2d');
+        const btcChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: [], datasets: [{ label: 'BTC/USDT Price', data: [], borderColor: '#f3ba2f', backgroundColor: 'rgba(243, 186, 47, 0.1)', borderWidth: 2, tension: 0.1, fill: true, pointRadius: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { x: { ticks: { color: '#888' }, grid: { color: '#333' } }, y: { ticks: { color: '#888' }, grid: { color: '#333' } } }, plugins: { legend: { labels: { color: '#fff' } } } }
+        });
+
+        // Fetch initial file list via REST API
+        async function loadFiles() {
+            try {
+                const response = await fetch('/api/files');
+                const files = await response.json();
+                
+                const fileListEl = document.getElementById('fileList');
+                fileListEl.innerHTML = ''; 
+
+                if (files.length === 0) {
+                    fileListEl.innerHTML = '<div style="padding: 10px; color: #ff4444;">No files found!</div>';
+                    return;
+                }
+
+                files.forEach(file => {
+                    const div = document.createElement('div');
+                    div.className = 'file-item';
+                    div.innerHTML = `
+                        <input type="checkbox" id="${file}" value="${file}" class="file-checkbox">
+                        <label for="${file}" style="cursor: pointer; width: 100%;">${file}</label>
+                    `;
+                    fileListEl.appendChild(div);
+                });
+            } catch (error) {
+                console.error("Error fetching files:", error);
+            }
+        }
+
+        // Fetch data for selected files and update chart
+        async function drawSelectedFiles() {
+            const checkboxes = document.querySelectorAll('.file-checkbox:checked');
+            const selectedFiles = Array.from(checkboxes).map(cb => cb.value);
+
+            if (selectedFiles.length === 0) {
+                alert("Please select at least one file!");
+                return;
+            }
+
+            document.getElementById('chartTitle').innerText = `Loading data...`;
+
+            try {
+                const response = await fetch('/api/files/data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ files: selectedFiles })
+                });
+
+                const data = await response.json();
+
+                if (data.length === 0) {
+                    alert("No data in the selected files.");
+                    document.getElementById('chartTitle').innerText = `Graph is empty`;
+                    return;
+                }
+
+                const labels = data.map(row => new Date(row.timestamp).toLocaleTimeString());
+                const prices = data.map(row => row.price);
+
+                btcChart.data.labels = labels;
+                btcChart.data.datasets[0].data = prices;
+                btcChart.update();
+
+                document.getElementById('chartTitle').innerText = `Graph for files: ${selectedFiles.join(', ')} (Points: ${data.length})`;
+
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("Error reading files!");
+            }
+        }
+
+        loadFiles();
+
+        // WebSocket listener for real-time file additions
+        const ws = new WebSocket("ws://127.0.0.1:8000/api/btc/stream");
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === "new_file") {
+                const fileListEl = document.getElementById('fileList');
+                
+                if (fileListEl.innerHTML.includes('No files found!')) {
+                    fileListEl.innerHTML = '';
+                }
+
+                const div = document.createElement('div');
+                div.className = 'file-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="${data.filename}" value="${data.filename}" class="file-checkbox">
+                    <label for="${data.filename}" style="cursor: pointer; width: 100%;">
+                        ${data.filename} <span style="color: #00ff88; font-size: 12px; margin-left: 10px;">(New!)</span>
+                    </label>
+                `;
+                
+                fileListEl.prepend(div);
+            }
+        };
+    </script>
+</body>
+</html>
