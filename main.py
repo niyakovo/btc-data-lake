@@ -4,6 +4,7 @@ from websocket_manager import websocket_manager
 from contextlib import asynccontextmanager
 from database import engine, get_db
 from sqlalchemy.orm import Session
+from datetime import datetime
 import asyncio
 import schemas
 import models
@@ -59,9 +60,24 @@ def get_file_list():
     folder = "./data_lake"
     if not os.path.exists(folder):
         return []
-    files = sorted([f for f in os.listdir(folder) if f.endswith('.csv')])
+    
+    file_data = []
+    for f in os.listdir(folder):
+        if f.endswith('.csv'):
+            fpath = os.path.join(folder, f)
+            
+            timestamp = os.path.getmtime(fpath)
+            dt = datetime.fromtimestamp(timestamp)
+            formatted_time = dt.strftime("%Y-%m-%d %H:%M:%S")
+            
+            file_data.append({
+                "filename": f,
+                "label": f"📅 {formatted_time} ({f})"
+            })
 
-    return files
+    # Сортуємо, щоб найновіші файли завжди були зверху
+    file_data = sorted(file_data, key=lambda x: x["filename"], reverse=True)
+    return file_data
 
 @app.post("/api/files/data")
 def get_data_for_files(selection: schemas.FileSelection):

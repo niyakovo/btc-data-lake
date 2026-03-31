@@ -1,14 +1,14 @@
+from datetime import datetime
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+from database import SessionLocal
+from websocket_manager import websocket_manager
 import csv
 import time
 import json
 import asyncio
 import models
 import os
-from datetime import datetime
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from database import SessionLocal
-from websocket_manager import websocket_manager
 
 
 def process_csv_file(file_path: str, loop):
@@ -48,11 +48,15 @@ class CSVHandler(FileSystemEventHandler):
             time.sleep(0.5)
             
             filename = os.path.basename(event.src_path)
+            now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            label = f"📅 {now} ({filename})"
+
             print(f"New file: {filename}")
             
             msg = json.dumps({
                 "type": "new_file", 
-                "filename": filename
+                "filename": filename,
+                "label": label
             })
             
             asyncio.run_coroutine_threadsafe(websocket_manager.broadcast(msg), self.loop)

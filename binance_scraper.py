@@ -14,7 +14,7 @@ def fetch_binance_price():
             price = float(data['price'])
             ts = datetime.now()
 
-            filename = f"./data_lake/btc_{ts.strftime('%H%M%S')}.csv"
+            filename = f"./data_lake/btc_{ts.strftime('%Y%m%d_%H%M%S')}.csv"
 
             with open(filename, mode='w', newline='', encoding='utf-8') as file:
                 writer = csv.writer(file)
@@ -26,7 +26,7 @@ def fetch_binance_price():
         except Exception as e:
             print(f"Connection error with Binance: {e}")
 
-        time.sleep(3)
+    time.sleep(1)
 
 if __name__ == "__main__":
     fetch_binance_price()

@@ -8,3 +8,5 @@ __pycache__/
 *.sqlite3
 
 data_lake/*.csv
+
+test.py
