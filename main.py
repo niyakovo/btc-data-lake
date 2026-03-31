@@ -72,10 +72,9 @@ def get_file_list():
             
             file_data.append({
                 "filename": f,
-                "label": f"📅 {formatted_time} ({f})"
+                "label": f"📅 {formatted_time}"
             })
 
-    # Сортуємо, щоб найновіші файли завжди були зверху
     file_data = sorted(file_data, key=lambda x: x["filename"], reverse=True)
     return file_data
 

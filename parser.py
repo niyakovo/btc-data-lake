@@ -49,7 +49,7 @@ class CSVHandler(FileSystemEventHandler):
             
             filename = os.path.basename(event.src_path)
             now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            label = f"📅 {now} ({filename})"
+            label = f"📅 {now})"
 
             print(f"New file: {filename}")
             
